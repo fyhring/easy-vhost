@@ -15,6 +15,7 @@ To delete a vhost:
 
 ### Setup
 You need to set the app up before using it. To do that you need to find your apache folder and your localhost www folder.
+
 **Windows:**
 ```
 > php vhost -setup
