@@ -1,6 +1,7 @@
 #!/usr/bin/php
 <?php
-
+	
+	
 	/*** CONFIG ***/
 
 	if(file_exists('vhost.config.php')) {
