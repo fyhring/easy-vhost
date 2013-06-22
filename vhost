@@ -1,0 +1,404 @@
+#!/usr/bin/php
+<?php
+
+	/*** CONFIG ***/
+
+	if(file_exists('vhost.config.php')) {
+		require_once('vhost.config.php');
+	}
+
+	/*** END OF CONFIG ***/
+
+
+	class Vhost {
+
+		protected $config;
+		protected $input;
+
+		public function __construct($config) {
+
+			$this->config = $config;
+
+			$controll = $this->controll();
+			if( $controll === true ) {
+
+				echo "Success.\n". $this->input['n'] ." is now ready.\n\n";
+				//echo "Success.";
+
+			} else {
+
+				// Wrong or missing parameters error.
+				echo "Error. Are you sure you have the correct parameters sat.\n\n";
+
+				echo "For adding a new vhost write the following command:\n";
+				echo "sudo php vhost -n \"hello.world\" -p \"hello_world/public_html/\"\n\n";
+				echo "For deleting a new vhost write the following command:\n";
+				echo "sudo php vhost -d \"hello.world\"\n\n";
+			}
+
+		}
+
+		public function controll() {
+
+			$opts = 'w:n:p:d:s';
+			$rules = array(
+				'required:',
+				'required:',
+				'required:',
+				'required:',
+				'opt'
+			);
+
+			$this->input = getopt($opts, $rules);
+
+			if(isset( $this->input['n'] ) && isset( $this->input['p'] )) {
+				// New vhost
+
+				if(empty($this->input['n'])) return false;
+				if(empty($this->input['p'])) return false;
+
+				if( $this->checkIfExists($this->input['n']) === true ) {
+
+					echo "\n\nVhost already exists.\n\n";
+					exit;
+				}
+
+				$this->addToHost( $this->input['n'] );
+				$this->addVHost( $this->input['n'], $this->input['p'] );
+
+				if( $this->restartApache() === false ) {
+					echo "Something went wrong, while trying to restart apache.\n\n";
+					exit;
+				} else {
+					return true;
+				}
+
+			} else if(isset( $this->input['d'] )) {
+				// Delete vhost
+
+				if(empty($this->input['d'])) return false;
+
+				if( $this->checkIfExists($this->input['d']) === false) {
+
+					echo "The vhost ". $this->input['d'] ." does not exists. And therefore it can not be deleted.\n\n";
+					exit;
+				}
+
+				$this->deleteFromHosts( $this->input['d'] );
+				$this->deleteFromVHost( $this->input['d'] );
+
+				if( $this->restartApache() === false ) {
+					echo "Something went wrong, while trying to restart apache.\n\n";
+					exit;
+				} else {
+					echo "Vhost ". $this->input['d'] ." was successfully deleted.\n\n";
+					exit;
+				}
+
+			} else if(isset( $this->input['s'] )) {
+				
+				// Setup...
+				$this->setup();
+
+				exit;
+			} else {
+				// Error
+				return false;
+			}
+		}
+
+		/**
+		 * This method create the config file.
+		 */
+		public function setup() {
+
+			echo "Setting VHost App up...\nPlease say thanks to Niels Fyhring for creating this tool.\n\n";
+
+			// UNIX Config 
+			$user_os = 'unix';
+			$sep = '/';
+
+			$q_apache_path = '/etc/apache2/';
+			$q_apache_restart_command = 'apachectl -k restart';
+			$q_hosts_path  = '/etc/hosts';
+
+			// Lets find out if we like the user.
+			echo "Is your OS Windows? Please type 'yes' or 'no' (default is no): ";
+			$handle = fopen("php://stdin","r");
+			$line = fgets($handle);
+
+			// If we're dealing with a shitty window machine
+			if(trim($line) == 'yes'){
+
+				echo "What is the path to the version of apache you're using: ";
+				$handle_q1 = fopen("php://stdin", "r");
+				$line_q1 = fgets($handle_q1);
+				$q_apache_path = trim($line_q1);
+				$q_apache_path .= '\\';
+
+				$q_hosts_path  = 'C:\Windows\System32\drivers\etc\hosts';
+				$q_apache_restart_command = 'cd '. $q_apache_path .'bin & httpd -k -restart';
+
+				$user_os = 'win';
+				$sep = '\\';
+
+			} else {
+				echo "I'm staring to like you!";
+
+			}
+
+			echo "\n\n";
+			echo "What's your localhost www/public_html folder? ";
+			$handle_q2 = fopen("php://stdin", "r");
+			$line_q2 = fgets($handle_q2);
+
+			$q_localhost_folder = trim($line_q2);
+
+
+			$config = "<?php\n\n\n
+	\$apache_restart_command 	= '". $q_apache_restart_command ."';
+
+	// Host file.
+	\$host_path 					= '". $q_hosts_path ."';
+	// Apache2 folder
+	\$apache_path 				= '". $q_apache_path ."';
+	// Localhost www/htdocs folder
+	\$webserver_path 			= '". $q_localhost_folder ."';
+
+	\$os 						= '". $user_os ."';
+
+	\$configIsLoaded = true;
+
+	define('SEP', '". $sep ."');
+
+	";
+
+			$vhost_app_default = "#---- vhost ----#
+<VirtualHost *:80>
+	# this is a dummy and should NOT be deleted.
+	ServerName vhost
+	DocumentRoot ". $q_localhost_folder ."
+</VirtualHost>
+#----------
+";
+			$hosts  = file_get_contents($q_hosts_path);
+			$hosts .= "\n\n\n\n";
+			$hosts .= "#------------- VHOST APP -------------#\n\n";
+
+			file_put_contents($q_hosts_path, $hosts);
+
+			if($user_os == 'unix') {
+				// UNIX user 
+				system('touch vhost.config.php');
+				file_put_contents('vhost.config.php', $config);
+
+				if(!file_exists($q_apache_path .'/other')) system('cd '. $q_apache_path .'; mkdir other');
+				system('touch vhost-app.conf');
+				file_put_contents('vhost-app.conf', $vhost_app_default);
+				usleep(50000);
+
+				system('mv vhost-app.conf '. $q_apache_path .'/other');
+
+				$this->restartApache( $q_apache_restart_command );
+
+			} else {
+
+				$config = str_replace("\\", "\\\\", $config);
+				system('Echo . >>vhost.config.php');
+				file_put_contents('vhost.config.php', $config);
+
+				if(!file_exists($q_apache_path .'\other')) system('cd '. $q_apache_path .' & mkdir other');
+				system('Echo . >>vhost-app.conf');
+				file_put_contents('vhost-app.conf', $vhost_app_default);
+				usleep(50000);
+
+				system('move /Y '. $q_localhost_folder .'\vhost-app.conf '. $q_apache_path .'other');
+
+				echo "You have to restart apache manually.\n\n";
+
+			}
+
+
+			echo "The setup is now finish.\n";
+
+		}
+
+		/**
+		 * Checks if the requested vhost exists.
+		 * @param 	string 	$name
+		 * @return 	boolean
+		 */
+		public function checkIfExists($name) {
+
+			$file = file_get_contents($this->config->apache_path .'other'. SEP .'vhost-app.conf');
+			$data = explode('#----------', $file);
+
+			$lookFor = '#---- '. $name .' ----#';
+
+			foreach($data as $vhost) {
+
+				$lines = explode("\n", $vhost);
+				if(!isset($lines[1])) break;
+				if(empty($lines[1])) break;
+
+				if( strstr($lines[1], $lookFor) !== false ) {
+					return true;
+				}
+
+
+			}
+			return false;
+
+		}
+
+
+		/**
+		 * Add a vhost in the vhost file.
+		 * @param 	string 	$name
+		 * @param 	string 	$path
+		 * @return 	void
+		 */
+		public function addVHost($name, $path) {
+
+			$data = file_get_contents($this->config->apache_path .'other'. SEP .'vhost-app.conf');
+
+			$_path = $this->config->webserver_path . SEP . $path;
+			if($path == '/') $_path = $this->config->webserver_path;
+
+			$data .= "#---- ". $name ." ----#\n";
+			$data .= "<VirtualHost *:80>\n";
+			$data .= "\tServerName ". $name ."\n";
+			$data .= "\tDocumentRoot ". $_path ."\n";
+			$data .= "</VirtualHost>\n";
+
+			$data .= "#----------\n";
+
+			file_put_contents($this->config->apache_path .'other'. SEP .'vhost-app.conf', $data);
+
+		}
+
+
+		/**
+		 * Add a host to the hosts file.
+		 * @param 	string 	$name
+		 * @return 	boolean
+		 */
+		public function addToHost($name) {
+
+			if( $this->hostExists($name) === true ) return true;
+
+			$data = file_get_contents($this->config->host_path);
+
+			$data .= "127.0.0.1    ". $name;
+			$data .= "\n";
+
+			file_put_contents($this->config->host_path, $data);
+			return true;
+		}
+
+
+		/**
+		 * Checks if the host already exists in the host file.
+		 * @param 	string 	$name
+		 * @return 	boolean
+		 */
+		public function hostExists($name) {
+
+			$file = file($this->config->host_path);
+			$find = '127.0.0.1    '. $name;
+
+			foreach($file as $line) {
+				if( strstr($line, $find) !== false ) return true;
+			}
+			return false;
+		}
+
+
+		/**
+		 * Restarts apache.
+		 * @param 	string 	command
+		 * @return 	boolean
+		 */
+		public function restartApache($command = false) {
+
+			if($command !== false) {
+				$restart = $command;
+			} else {
+				if($this->config->os == 'win') {
+					echo "Sorry I can't restart apache for you, you have to do that manually.\n";
+					return true;
+				}
+				$restart = $this->config->apache_restart_command;
+			}
+
+			system($restart, $resp);
+			if($resp == '0') return true;
+			return false;
+		}
+
+
+		/**
+		 * Delete a host from the hosts file.
+		 * @param 	string 	$name
+		 * @return 	void
+		 */
+		public function deleteFromHosts($name) {
+
+			$lines = file($this->config->host_path);
+			$data = array();
+			$find = "127.0.0.1    ". $name;
+
+			foreach($lines as $line) {
+				if( strstr($line, $find) !== false ) $line = '';
+				$data[] = $line;
+			}
+
+			$stringData = implode('', $data);
+			file_put_contents($this->config->host_path, $stringData);
+		}
+
+
+		/**
+		 * Delete a vhost from the vhost-app file.
+		 * @param 	string 	$name
+		 * @return 	void
+		 */
+		public function deleteFromVHost($name) {
+
+			$file = file_get_contents($this->config->apache_path .'other'. SEP .'vhost-app.conf');
+			$hosts = explode('#----------', $file);
+
+			$data = array();
+
+			$lookFor = '#---- '. $name .' ----#';
+
+			foreach($hosts as $host) {
+
+				$line = explode("\n", $host);
+				if(!isset($line[1])) break;
+				if(empty($line[1])) break;
+
+				if( strstr($line[1], $lookFor) !== false) $host = "#----------\n";
+				$data[] = $host;
+			}
+
+			$stringData = implode('', $data);
+			file_put_contents($this->config->apache_path .'other'. SEP .'vhost-app.conf', $stringData);
+
+		}
+
+	}
+
+
+	$config = new stdClass;
+
+	if(isset($configIsLoaded)) {
+		$config->apache_restart_command = $apache_restart_command;
+		$config->apache_path 			= $apache_path;
+		$config->host_path 				= $host_path;
+		$config->webserver_path 		= $webserver_path;
+		$config->os 					= $os;
+	}
+
+	$vhost = new Vhost($config);
+
