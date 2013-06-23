@@ -440,11 +440,12 @@
 				if(!isset($line[1])) break;
 				if(empty($line[1])) break;
 
-				if( strstr($line[1], $lookFor) !== false) $host = "#----------\n";
+				if( strstr($line[1], $lookFor) !== false) $host = "\n";
 				$data[] = $host;
 			}
 
-			$stringData = implode('', $data);
+			$stringData = implode("#----------", $data);
+
 			file_put_contents($this->config->apache_path .'other'. SEP .'vhost-app.conf', $stringData);
 
 		}
