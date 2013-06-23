@@ -41,12 +41,13 @@
 
 		public function controll() {
 
-			$opts = 'w:n:p:d:s';
+			$opts = 'w:n:p:d:s:l';
 			$rules = array(
 				'required:',
 				'required:',
 				'required:',
 				'required:',
+				'opt',
 				'opt'
 			);
 
@@ -102,6 +103,30 @@
 				$this->setup();
 
 				exit;
+			} else if(isset( $this->input['l'] )) {
+
+				$list = $this->getAllVHosts();
+
+				if(empty($list)) {
+					echo "You have no registered virtual hosts.\n";
+					exit;
+				}
+
+				$countList = count($list);
+				echo "You have ". $countList;
+				echo ($countList == 1) ? " virtual host." : " virtual hosts.";
+
+				echo "\n------------------\n";
+
+				foreach($list as $host) {
+
+					echo $host[0] ."\t\t\t". $host[1] ."\n";
+
+				}
+
+				echo "\n\n";
+				exit;
+
 			} else {
 				// Error
 				return false;
@@ -275,6 +300,42 @@
 			$data .= "#----------\n";
 
 			file_put_contents($this->config->apache_path .'other'. SEP .'vhost-app.conf', $data);
+
+		}
+
+		/**
+		 * Gets a list of all Virtual Hosts made from this program.
+		 * This method DOES NOT include the apache default httpd-vhost.conf file.
+		 * @return 	array
+		 */
+		public function getAllVHosts() {
+
+			$file = file_get_contents($this->config->apache_path .'other'. SEP .'vhost-app.conf');
+			$hosts = explode('#----------', $file);
+
+			$data = array();
+
+			foreach($hosts as $host) {
+
+				$lines = explode("\n", $host);
+
+				//if(!isset($lines[4])) break;
+				//if($lines[2] != '<VirtualHost *:80>') break;
+				if(empty($lines[1])) break;
+
+
+				$_name = str_replace('#---- ', '', $lines[1]);
+				$_name = str_replace(' ----#', '', $_name);
+
+
+				$_dir = str_replace("\tDocumentRoot ", '', $lines[4]);
+
+				if($_name != '<VirtualHost *:80>') {
+					$data[] = array($_name, $_dir);
+				}
+			}
+
+			return $data;
 
 		}
 
