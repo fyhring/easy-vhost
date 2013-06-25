@@ -3,7 +3,7 @@
 A terminal program for managing virtual hosts.
 Tested on Mac Mountain Lion and Windows 7 with xampp & wamp.
 
-### Usage: (UNIX)
+### Usage:
 If you're using windows, you shall of cause not say "sudo". You should however open CMD as administrator.
 To add a vhost:
 ```
@@ -41,7 +41,7 @@ Include "C:\wamp\bin\apache\apache2.2.22\other\*.conf"
 ```
 > sudo php vhost -setup
 Is your OS Windows? Please type 'yes' or 'no' (default is no): > no (or just hit enter)
-What's your localhost www/public_html folder? > /Library/WebServer/Documents
+What's your localhost www/public_html folder? > /Library/WebServer/Documents (Could also be your MAMP folder)
 
 The setup is now finish.
 ```
