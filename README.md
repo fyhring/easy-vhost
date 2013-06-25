@@ -1,6 +1,6 @@
 # Easy-vhost
 
-A terminal program for creating vhosts.
+A terminal program for managing virtual hosts.
 Tested on Mac Mountain Lion and Windows 7 with xampp & wamp.
 
 ### Usage: (UNIX)
