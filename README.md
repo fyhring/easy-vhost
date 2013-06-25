@@ -3,7 +3,8 @@
 A terminal program for creating vhosts.
 Tested on Mac Mountain Lion and Windows 7 with xampp & wamp.
 
-### Usage:
+### Usage: (UNIX)
+If you're using windows, you shall of cause not say "sudo". You should however open CMD as administrator.
 To add a vhost:
 ```
 > sudo php vhost -n "helloworld.dev" -p "path/to/hello/world/public"
@@ -12,6 +13,12 @@ To delete a vhost:
 ```
 > sudo php vhost -d "helloworld.dev"
 ```
+
+To see a list of all vhost:
+```
+> sudo php vhost -l
+```
+
 
 ### Setup
 You need to set the app up before using it. To do that you need to find your apache folder and your localhost www folder.
@@ -43,5 +50,5 @@ It should be this easy, if you're having any trouble please let me know.
 
 If it doesn't work on Mac, check your httpd.conf file, at the very end it should contain this line:
 ```
-Include /private/etc/apache2/other/*.conf
+Include /etc/apache2/other/*.conf
 ```
