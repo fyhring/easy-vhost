@@ -1,7 +1,7 @@
 #!/usr/bin/php
 <?php
-	
-	
+
+
 	/*** CONFIG ***/
 
 	if(file_exists('vhost.config.php')) {
@@ -98,7 +98,7 @@
 				}
 
 			} else if(isset( $this->input['s'] )) {
-				
+
 				// Setup...
 				$this->setup();
 
@@ -386,10 +386,6 @@
 			if($command !== false) {
 				$restart = $command;
 			} else {
-				if($this->config->os == 'win') {
-					echo "Sorry I can't restart apache for you, you have to do that manually.\n";
-					return true;
-				}
 				$restart = $this->config->apache_restart_command;
 			}
 
@@ -464,4 +460,3 @@
 	}
 
 	$vhost = new Vhost($config);
-
